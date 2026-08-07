@@ -1,0 +1,5 @@
+# Copy this file to terraform.tfvars and fill in your real public IP.
+# terraform.tfvars itself should NOT be committed (it's in .gitignore) -
+# only this .example file is safe to commit.
+
+my_ip_cidr = "YOUR_PUBLIC_IP/32"
