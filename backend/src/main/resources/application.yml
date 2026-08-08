@@ -1,0 +1,32 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: notesapp-backend
+
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:notesdb}
+    username: ${DB_USER:notesuser}
+    password: ${DB_PASSWORD:notespassword}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      # 'update' auto-creates/updates tables from the entity classes.
+      # Fine for a lab - a real production app would use versioned
+      # migrations (Flyway/Liquibase) instead of relying on this.
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: never
