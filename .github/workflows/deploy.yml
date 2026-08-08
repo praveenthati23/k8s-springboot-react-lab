@@ -1,0 +1,105 @@
+name: Build, Deploy to Dev, Promote to Prod
+
+on:
+  push:
+    branches: [dev]
+
+env:
+  DOCKERHUB_NAMESPACE: thatipraveen23
+
+jobs:
+  # ---------------------------------------------------------------------
+  # Job 1: Build both images ONCE, tagged with the git commit SHA, push
+  # to Docker Hub, then deploy that exact tag to the dev namespace.
+  # ---------------------------------------------------------------------
+  build-and-deploy-dev:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push backend image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          push: true
+          tags: |
+            ${{ env.DOCKERHUB_NAMESPACE }}/k8s-lab-backend:${{ github.sha }}
+            ${{ env.DOCKERHUB_NAMESPACE }}/k8s-lab-backend:latest
+
+      - name: Build and push frontend image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          push: true
+          tags: |
+            ${{ env.DOCKERHUB_NAMESPACE }}/k8s-lab-frontend:${{ github.sha }}
+            ${{ env.DOCKERHUB_NAMESPACE }}/k8s-lab-frontend:latest
+
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: 'v1.30.14'
+
+      - name: Configure kubeconfig
+        run: |
+          mkdir -p $HOME/.kube
+          echo "${{ secrets.KUBE_CONFIG_DATA }}" | base64 -d > $HOME/.kube/config
+
+      - name: Apply namespace and dev manifests
+        run: |
+          kubectl apply -f k8s-manifests/namespaces.yaml
+          kubectl apply -f k8s-manifests/dev/
+
+      - name: Deploy to dev
+        run: |
+          kubectl set image deployment/backend backend=${{ env.DOCKERHUB_NAMESPACE }}/k8s-lab-backend:${{ github.sha }} -n dev
+          kubectl set image deployment/frontend frontend=${{ env.DOCKERHUB_NAMESPACE }}/k8s-lab-frontend:${{ github.sha }} -n dev
+          kubectl rollout status deployment/backend -n dev --timeout=120s
+          kubectl rollout status deployment/frontend -n dev --timeout=120s
+
+  # ---------------------------------------------------------------------
+  # Job 2: Only runs if job 1 succeeded (dev is healthy). Does NOT
+  # rebuild anything - it takes the exact same SHA-tagged image that
+  # just passed dev and promotes it to prod. The 'environment: production'
+  # line is what creates the pause-and-wait-for-approval gate, IF you've
+  # configured required reviewers in Settings > Environments > production.
+  # Without that configuration, this job just runs immediately after job 1.
+  # ---------------------------------------------------------------------
+  promote-to-prod:
+    needs: build-and-deploy-dev
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: 'v1.30.14'
+
+      - name: Configure kubeconfig
+        run: |
+          mkdir -p $HOME/.kube
+          echo "${{ secrets.KUBE_CONFIG_DATA }}" | base64 -d > $HOME/.kube/config
+
+      - name: Apply namespace and prod manifests
+        run: |
+          kubectl apply -f k8s-manifests/namespaces.yaml
+          kubectl apply -f k8s-manifests/prod/
+
+      - name: Promote the SAME image to prod
+        run: |
+          kubectl set image deployment/backend backend=${{ env.DOCKERHUB_NAMESPACE }}/k8s-lab-backend:${{ github.sha }} -n prod
+          kubectl set image deployment/frontend frontend=${{ env.DOCKERHUB_NAMESPACE }}/k8s-lab-frontend:${{ github.sha }} -n prod
+          kubectl rollout status deployment/backend -n prod --timeout=120s
+          kubectl rollout status deployment/frontend -n prod --timeout=120s

@@ -1,0 +1,103 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: postgres-pv-prod
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: manual
+  hostPath:
+    path: /mnt/data/postgres-prod
+  claimRef:
+    namespace: prod
+    name: postgres-pvc
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-pvc
+  namespace: prod
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: manual
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: postgres-secret
+  namespace: prod
+type: Opaque
+stringData:
+  POSTGRES_DB: notesdb
+  POSTGRES_USER: notesuser
+  POSTGRES_PASSWORD: notespassword-prod
+  DB_HOST: postgres
+  DB_PORT: "5432"
+  DB_NAME: notesdb
+  DB_USER: notesuser
+  DB_PASSWORD: notespassword-prod
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: prod
+spec:
+  clusterIP: None
+  selector:
+    app: postgres
+  ports:
+    - port: 5432
+      targetPort: 5432
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+  namespace: prod
+spec:
+  serviceName: postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16
+          ports:
+            - containerPort: 5432
+          envFrom:
+            - secretRef:
+                name: postgres-secret
+          volumeMounts:
+            - name: postgres-storage
+              mountPath: /var/lib/postgresql/data
+              subPath: postgres
+          resources:
+            requests:
+              cpu: 100m
+              memory: 200Mi
+            limits:
+              cpu: 250m
+              memory: 350Mi
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "notesuser"]
+            initialDelaySeconds: 10
+            periodSeconds: 10
+      volumes:
+        - name: postgres-storage
+          persistentVolumeClaim:
+            claimName: postgres-pvc
