@@ -1,0 +1,25 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: notesapp-prod
+  namespace: argocd
+spec:
+  project: default
+
+  source:
+    repoURL: https://github.com/praveenthati23/k8s-springboot-react-lab.git
+    targetRevision: dev
+    path: k8s-manifests/prod
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: prod
+
+  # Deliberately NO automated block here. ArgoCD will show prod as
+  # "OutOfSync" whenever dev has been promoted but prod hasn't matched
+  # yet - and it stays that way until a human clicks Sync in the UI.
+  # This IS the manual approval gate in this GitOps setup, replacing
+  # the GitHub Environment approval from the previous CI/CD version.
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true

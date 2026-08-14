@@ -1,0 +1,26 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: notesapp-dev
+  namespace: argocd
+spec:
+  project: default
+
+  source:
+    repoURL: https://github.com/praveenthati23/k8s-springboot-react-lab.git
+    targetRevision: dev
+    path: k8s-manifests/dev
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: dev
+
+  syncPolicy:
+    # Auto-sync: ArgoCD detects any commit to k8s-manifests/dev on the
+    # dev branch and applies it within seconds, no manual action needed.
+    # This is what Jenkins' manifest-patching commit triggers.
+    automated:
+      prune: true    # remove resources from the cluster if removed from git
+      selfHeal: true  # revert manual kubectl changes back to match git
+    syncOptions:
+      - CreateNamespace=true
