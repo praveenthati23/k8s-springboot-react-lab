@@ -18,7 +18,7 @@ spec:
           # Placeholder tag - CI/CD overwrites this with the specific
           # git-sha-tagged image via `kubectl set image` on every deploy.
           # This baseline exists so the manifest is apply-able standalone.
-          image: thatipraveen23/k8s-lab-backend:349
+          image: thatipraveen23/k8s-lab-backend:350
           ports:
             - containerPort: 8080
           envFrom:
