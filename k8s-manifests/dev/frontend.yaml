@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: thatipraveen23/k8s-lab-frontend:122
+          image: thatipraveen23/k8s-lab-frontend:123
           ports:
             - containerPort: 80
           resources:
