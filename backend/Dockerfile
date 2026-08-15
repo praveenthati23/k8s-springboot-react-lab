@@ -24,7 +24,7 @@ FROM eclipse-temurin:17-jre-jammy
 
 WORKDIR /app
 
-# Run as a non-root user - basic container security hygiene
+# Run as a non-root user - basic container security hygene
 RUN addgroup --system spring && adduser --system --ingroup spring spring
 USER spring:spring
 
