@@ -40,7 +40,7 @@ export default function App() {
     <div className="app">
       <header>
         <h1>Notes</h1>
-        <p className="subtitle">Kubernetes lab - Spring Boot + React + Postgres</p>
+        <p className="subtitle">Kubernetes lab - Spring Boot + React + Postgres + v2</p>
       </header>
 
       <NoteForm onCreate={handleCreate} />
